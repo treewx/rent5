@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rent Property Manager - Akahu Integration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn-success {
+            background: #27ae60;
+        }
+
+        .btn-success:hover {
+            background: #219a52;
+        }
+
+        .property-list {
+            margin-top: 20px;
+        }
+
+        .property-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+
+        .property-item h4 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .property-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 20px 0;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #ecf0f1;
+            border-bottom: 1px solid #bdc3c7;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-tab {
+            background: #ecf0f1;
+            border: none;
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .nav-tab:hover {
+            background: #d5dbdb;
+        }
+
+        .nav-tab.active {
+            background: white;
+            border-bottom-color: #3498db;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .rent-check-item {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .rent-check-header {
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rent-check-header:hover {
+            background: #e9ecef;
+        }
+
+        .check-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .check-status.completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .check-status.running {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .check-status.failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .rent-check-details {
+            display: none;
+            padding: 20px;
+            background: white;
+        }
+
+        .rent-check-details.expanded {
+            display: block;
+        }
+
+        .step-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .step-item:last-child {
+            border-bottom: none;
+        }
+
+        .step-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .step-icon.completed {
+            background: #28a745;
+            color: white;
+        }
+
+        .step-icon.running {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .step-icon.failed {
+            background: #dc3545;
+            color: white;
+        }
+
+        .step-icon.pending {
+            background: #6c757d;
+            color: white;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .step-details {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+
+        .rent-check-summary {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .summary-label {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Rent Property Manager</h1>
+            <p>Integrate with Akahu Bank Feed & Manage Properties</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('properties')">Properties</button>
+            <button class="nav-tab" onclick="switchTab('rent-checks')">Rent Checks</button>
+        </div>
+
+        <div id="properties-tab" class="tab-content active">
+            <div class="section">
+                <h2>Akahu Integration Settings</h2>
+            <form id="akahuForm">
+                <div class="form-group">
+                    <label for="akahuAppToken">Akahu App Token:</label>
+                    <input type="password" id="akahuAppToken" name="akahuAppToken" required>
+                </div>
+                <div class="form-group">
+                    <label for="akahuUserToken">Akahu User Token:</label>
+                    <input type="password" id="akahuUserToken" name="akahuUserToken" required>
+                </div>
+                <button type="submit" class="btn">Save Akahu Settings</button>
+                <button type="button" class="btn" onclick="testConnection()">Test Connection</button>
+            </form>
+            <div id="akahuStatus" class="status"></div>
+        </div>
+
+        <div class="section">
+            <h2>Add Property</h2>
+            <form id="propertyForm">
+                <div class="form-group">
+                    <label for="propertyAddress">Property Address:</label>
+                    <input type="text" id="propertyAddress" name="propertyAddress" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="rentAmount">Rent Amount ($):</label>
+                        <input type="number" id="rentAmount" name="rentAmount" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentFrequency">Rent Frequency:</label>
+                        <select id="rentFrequency" name="rentFrequency" required>
+                            <option value="">Select frequency</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="fortnightly">Fortnightly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tenantName">Tenant Name:</label>
+                        <input type="text" id="tenantName" name="tenantName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentDueDay">Rent Due Day:</label>
+                        <input type="number" id="rentDueDay" name="rentDueDay" min="1" max="31" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="transactionKeyword">Transaction Keyword (for bank feed matching):</label>
+                    <input type="text" id="transactionKeyword" name="transactionKeyword"
+                           placeholder="e.g., tenant name, property reference, etc." required>
+                </div>
+
+                <button type="submit" class="btn btn-success">Add Property</button>
+            </form>
+            <div id="propertyStatus" class="status"></div>
+        </div>
+
+        <div class="section">
+            <h2>Your Properties</h2>
+            <div id="propertyList" class="property-list">
+                <p>No properties added yet.</p>
+            </div>
+            <button type="button" class="btn" onclick="fetchBankTransactions()">Fetch Bank Transactions</button>
+            <button type="button" class="btn btn-warning" onclick="runRentCheck()">Run Rent Check Now</button>
+            </div>
+        </div>
+
+        <div id="rent-checks-tab" class="tab-content">
+            <div class="section">
+                <h2>Rent Check History</h2>
+                <div class="rent-check-summary">
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-number" id="totalChecks">0</div>
+                            <div class="summary-label">Total Checks</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-number" id="successfulChecks">0</div>
+                            <div class="summary-label">Successful</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-number" id="failedChecks">0</div>
+                            <div class="summary-label">Failed</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-number" id="nextCheck">-</div>
+                            <div class="summary-label">Next Check</div>
+                        </div>
+                    </div>
+                </div>
+                <div id="rentCheckHistory">
+                    <p>No rent checks have been run yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let properties = JSON.parse(localStorage.getItem('properties') || '[]');
+        let akahuSettings = JSON.parse(localStorage.getItem('akahuSettings') || '{}');
+        let rentChecks = JSON.parse(localStorage.getItem('rentChecks') || '[]');
+        let checkInterval;
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            if (tabName === 'rent-checks') {
+                updateRentCheckSummary();
+                displayRentChecks();
+            }
+        }
+
+        document.getElementById('akahuForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const settings = {
+                appToken: formData.get('akahuAppToken'),
+                userToken: formData.get('akahuUserToken')
+            };
+
+            localStorage.setItem('akahuSettings', JSON.stringify(settings));
+            akahuSettings = settings;
+
+            showStatus('akahuStatus', 'Akahu settings saved successfully!', 'success');
+        });
+
+        document.getElementById('propertyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const property = {
+                id: Date.now(),
+                address: formData.get('propertyAddress'),
+                rentAmount: parseFloat(formData.get('rentAmount')),
+                rentFrequency: formData.get('rentFrequency'),
+                tenantName: formData.get('tenantName'),
+                rentDueDay: parseInt(formData.get('rentDueDay')),
+                transactionKeyword: formData.get('transactionKeyword')
+            };
+
+            properties.push(property);
+            localStorage.setItem('properties', JSON.stringify(properties));
+
+            this.reset();
+            displayProperties();
+            updateNextCheckDate();
+            showStatus('propertyStatus', 'Property added successfully!', 'success');
+        });
+
+        function displayProperties() {
+            const listElement = document.getElementById('propertyList');
+
+            if (properties.length === 0) {
+                listElement.innerHTML = '<p>No properties added yet.</p>';
+                return;
+            }
+
+            listElement.innerHTML = properties.map(property => `
+                <div class="property-item">
+                    <h4>${property.address}</h4>
+                    <div class="property-details">
+                        <div><strong>Tenant:</strong> ${property.tenantName}</div>
+                        <div><strong>Rent:</strong> $${property.rentAmount} ${property.rentFrequency}</div>
+                        <div><strong>Due Day:</strong> ${property.rentDueDay}</div>
+                        <div><strong>Keyword:</strong> ${property.transactionKeyword}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showStatus(elementId, message, type) {
+            const statusElement = document.getElementById(elementId);
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+            statusElement.style.display = 'block';
+
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+            }, 3000);
+        }
+
+        async function testConnection() {
+            if (!akahuSettings.appToken || !akahuSettings.userToken) {
+                showStatus('akahuStatus', 'Please save Akahu settings first', 'error');
+                return;
+            }
+
+            showStatus('akahuStatus', 'Testing connection to Akahu API...', 'success');
+
+            try {
+                const response = await makeAkahuRequest('/me');
+                if (response.success) {
+                    showStatus('akahuStatus', `Connection successful! User: ${response.item.name}`, 'success');
+                } else {
+                    showStatus('akahuStatus', 'Connection failed: ' + response.message, 'error');
+                }
+            } catch (error) {
+                showStatus('akahuStatus', 'Connection failed: ' + error.message, 'error');
+            }
+        }
+
+        async function makeAkahuRequest(endpoint, method = 'GET', body = null) {
+            const headers = {
+                'Authorization': `Bearer ${akahuSettings.userToken}`,
+                'X-Akahu-ID': akahuSettings.appToken,
+                'Content-Type': 'application/json'
+            };
+
+            const options = {
+                method,
+                headers,
+                mode: 'cors'
+            };
+
+            if (body && method !== 'GET') {
+                options.body = JSON.stringify(body);
+            }
+
+            try {
+                const response = await fetch(`/api/akahu${endpoint}`, options);
+                const data = await response.json();
+
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    message: data.message || (response.ok ? 'Success' : 'Request failed'),
+                    item: data.item,
+                    items: data.items,
+                    cursor: data.cursor
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    message: error.message,
+                    item: null,
+                    items: []
+                };
+            }
+        }
+
+        async function fetchBankTransactions() {
+            if (!akahuSettings.appToken || !akahuSettings.userToken) {
+                alert('Please configure Akahu settings with both App Token and User Token');
+                return;
+            }
+
+            if (properties.length === 0) {
+                alert('Please add at least one property first');
+                return;
+            }
+
+            try {
+                // Get accounts first
+                const accountsResponse = await makeAkahuRequest('/accounts');
+                if (!accountsResponse.success) {
+                    alert('Failed to fetch accounts: ' + accountsResponse.message);
+                    return;
+                }
+
+                // Get transactions for all accounts
+                const allTransactions = [];
+                for (const account of accountsResponse.items) {
+                    const transactionsResponse = await makeAkahuRequest(`/accounts/${account._id}/transactions?start=${getDateDaysAgo(30)}`);
+                    if (transactionsResponse.success) {
+                        allTransactions.push(...transactionsResponse.items);
+                    }
+                }
+
+                // Match transactions to properties
+                const matchedTransactions = matchTransactionsToProperties(allTransactions);
+                displayTransactionResults(matchedTransactions);
+
+            } catch (error) {
+                alert('Error fetching transactions: ' + error.message);
+            }
+        }
+
+        function getDateDaysAgo(days) {
+            const date = new Date();
+            date.setDate(date.getDate() - days);
+            return date.toISOString().split('T')[0];
+        }
+
+        function matchTransactionsToProperties(transactions) {
+            const matches = [];
+
+            properties.forEach(property => {
+                const propertyMatches = transactions.filter(transaction => {
+                    const description = (transaction.description || '').toLowerCase();
+                    const keyword = property.transactionKeyword.toLowerCase();
+
+                    // Check if transaction is a credit (incoming payment)
+                    const isCredit = transaction.amount > 0;
+
+                    // Check if description contains the keyword
+                    const keywordMatch = description.includes(keyword);
+
+                    // Check if amount matches rent (within 5% tolerance)
+                    const amountMatch = Math.abs(transaction.amount - property.rentAmount) <= (property.rentAmount * 0.05);
+
+                    return isCredit && keywordMatch && amountMatch;
+                });
+
+                matches.push({
+                    property,
+                    transactions: propertyMatches
+                });
+            });
+
+            return matches;
+        }
+
+        function displayTransactionResults(matchedTransactions) {
+            let resultHtml = '<h3>Recent Rent Payments</h3>';
+
+            matchedTransactions.forEach(match => {
+                resultHtml += `<div class="property-item">
+                    <h4>${match.property.address}</h4>
+                    <p><strong>Expected:</strong> $${match.property.rentAmount} ${match.property.rentFrequency}</p>
+                    <p><strong>Keyword:</strong> ${match.property.transactionKeyword}</p>
+
+                    ${match.transactions.length > 0 ?
+                        '<h5>Matched Transactions:</h5>' +
+                        match.transactions.map(tx => `
+                            <div style="margin-left: 20px; padding: 10px; background: #f0f8ff; border-left: 3px solid #007bff; margin-bottom: 10px;">
+                                <strong>$${tx.amount}</strong> - ${new Date(tx.date).toLocaleDateString()}<br>
+                                <small>${tx.description}</small><br>
+                                <small>Account: ${tx.account}</small>
+                            </div>
+                        `).join('')
+                        :
+                        '<p style="color: #dc3545; font-style: italic;">No matching transactions found</p>'
+                    }
+                </div>`;
+            });
+
+            // Create a modal or new section to show results
+            const existingResults = document.getElementById('transactionResults');
+            if (existingResults) {
+                existingResults.innerHTML = resultHtml;
+            } else {
+                const resultsDiv = document.createElement('div');
+                resultsDiv.id = 'transactionResults';
+                resultsDiv.innerHTML = `<div class="section">${resultHtml}</div>`;
+                document.querySelector('.container').appendChild(resultsDiv);
+            }
+        }
+
+        function getNextRentDueDate(property) {
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            const currentDay = now.getDate();
+
+            let dueDate;
+
+            if (property.rentFrequency === 'monthly') {
+                dueDate = new Date(currentYear, currentMonth, property.rentDueDay);
+                if (dueDate <= now) {
+                    dueDate = new Date(currentYear, currentMonth + 1, property.rentDueDay);
+                }
+            } else if (property.rentFrequency === 'weekly') {
+                const daysSinceLastDue = (currentDay - property.rentDueDay + 7) % 7;
+                dueDate = new Date(now);
+                dueDate.setDate(currentDay - daysSinceLastDue + 7);
+            } else if (property.rentFrequency === 'fortnightly') {
+                const daysSinceLastDue = (currentDay - property.rentDueDay + 14) % 14;
+                dueDate = new Date(now);
+                dueDate.setDate(currentDay - daysSinceLastDue + 14);
+            }
+
+            return dueDate;
+        }
+
+        function getNextCheckDate() {
+            if (properties.length === 0) return null;
+
+            const nextDueDates = properties.map(property => {
+                const dueDate = getNextRentDueDate(property);
+                const checkDate = new Date(dueDate);
+                checkDate.setDate(checkDate.getDate() + 1);
+                return checkDate;
+            });
+
+            return new Date(Math.min(...nextDueDates));
+        }
+
+        function updateNextCheckDate() {
+            const nextCheck = getNextCheckDate();
+            const nextCheckElement = document.getElementById('nextCheck');
+            if (nextCheckElement) {
+                nextCheckElement.textContent = nextCheck ?
+                    nextCheck.toLocaleDateString() : '-';
+            }
+        }
+
+        function shouldRunRentCheck() {
+            const now = new Date();
+            const propertiesNeedingCheck = properties.filter(property => {
+                const dueDate = getNextRentDueDate(property);
+                const checkDate = new Date(dueDate);
+                checkDate.setDate(checkDate.getDate() + 1);
+
+                const lastCheck = rentChecks
+                    .filter(check => check.propertyId === property.id)
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+
+                if (!lastCheck) return checkDate <= now;
+
+                const lastCheckDate = new Date(lastCheck.timestamp);
+                return checkDate <= now && checkDate > lastCheckDate;
+            });
+
+            return propertiesNeedingCheck;
+        }
+
+        function runRentCheck(manual = false) {
+            if (!akahuSettings.appToken || !akahuSettings.userToken) {
+                alert('Please configure Akahu settings with both App Token and User Token before running rent checks');
+                return;
+            }
+
+            const propertiesToCheck = manual ? properties : shouldRunRentCheck();
+
+            if (propertiesToCheck.length === 0) {
+                if (manual) {
+                    alert('No properties need checking at this time.');
+                }
+                return;
+            }
+
+            propertiesToCheck.forEach(property => {
+                executeRentCheck(property, manual);
+            });
+        }
+
+        async function executeRentCheck(property, manual = false) {
+            const checkId = Date.now() + Math.random();
+            const rentCheck = {
+                id: checkId,
+                propertyId: property.id,
+                propertyAddress: property.address,
+                tenantName: property.tenantName,
+                timestamp: new Date().toISOString(),
+                status: 'running',
+                manual: manual,
+                steps: [
+                    { id: 1, title: 'Connecting to Akahu API', status: 'pending', details: '', timestamp: null },
+                    { id: 2, title: 'Fetching accounts', status: 'pending', details: '', timestamp: null },
+                    { id: 3, title: 'Fetching recent transactions', status: 'pending', details: '', timestamp: null },
+                    { id: 4, title: `Searching for keyword: "${property.transactionKeyword}"`, status: 'pending', details: '', timestamp: null },
+                    { id: 5, title: 'Analyzing payment amounts', status: 'pending', details: '', timestamp: null },
+                    { id: 6, title: 'Generating report', status: 'pending', details: '', timestamp: null }
+                ],
+                result: null
+            };
+
+            rentChecks.unshift(rentCheck);
+            localStorage.setItem('rentChecks', JSON.stringify(rentChecks));
+
+            if (document.getElementById('rent-checks-tab').classList.contains('active')) {
+                displayRentChecks();
+                updateRentCheckSummary();
+            }
+
+            await performActualRentCheck(checkId, property);
+        }
+
+        async function performActualRentCheck(checkId, property) {
+            const updateStep = (stepIndex, status, details = '') => {
+                const check = rentChecks.find(c => c.id === checkId);
+                if (!check) return;
+
+                check.steps[stepIndex].status = status;
+                check.steps[stepIndex].details = details;
+                check.steps[stepIndex].timestamp = new Date().toISOString();
+
+                localStorage.setItem('rentChecks', JSON.stringify(rentChecks));
+
+                if (document.getElementById('rent-checks-tab').classList.contains('active')) {
+                    displayRentChecks();
+                }
+            };
+
+            try {
+                // Step 1: Test API connection
+                updateStep(0, 'running');
+                const testResponse = await makeAkahuRequest('/me');
+                if (!testResponse.success) {
+                    updateStep(0, 'failed', `API connection failed: ${testResponse.message}`);
+                    return await finalizeCheck(checkId, 'failed');
+                }
+                updateStep(0, 'completed', 'Successfully connected to Akahu API');
+
+                // Step 2: Fetch accounts
+                updateStep(1, 'running');
+                const accountsResponse = await makeAkahuRequest('/accounts');
+                if (!accountsResponse.success) {
+                    updateStep(1, 'failed', `Failed to fetch accounts: ${accountsResponse.message}`);
+                    return await finalizeCheck(checkId, 'failed');
+                }
+                updateStep(1, 'completed', `Found ${accountsResponse.items.length} accounts`);
+
+                // Step 3: Fetch transactions
+                updateStep(2, 'running');
+                const allTransactions = [];
+                let totalTransactions = 0;
+
+                for (const account of accountsResponse.items) {
+                    const transactionsResponse = await makeAkahuRequest(`/accounts/${account._id}/transactions?start=${getDateDaysAgo(30)}`);
+                    if (transactionsResponse.success) {
+                        allTransactions.push(...transactionsResponse.items);
+                        totalTransactions += transactionsResponse.items.length;
+                    }
+                }
+
+                if (totalTransactions === 0) {
+                    updateStep(2, 'failed', 'No transactions found in the last 30 days');
+                    return await finalizeCheck(checkId, 'failed');
+                }
+                updateStep(2, 'completed', `Retrieved ${totalTransactions} transactions from the last 30 days`);
+
+                // Step 4: Search for keyword matches
+                updateStep(3, 'running');
+                const keywordMatches = allTransactions.filter(transaction => {
+                    const description = (transaction.description || '').toLowerCase();
+                    const keyword = property.transactionKeyword.toLowerCase();
+                    return description.includes(keyword) && transaction.amount > 0;
+                });
+
+                if (keywordMatches.length === 0) {
+                    updateStep(3, 'completed', `No transactions found containing "${property.transactionKeyword}"`);
+                } else {
+                    updateStep(3, 'completed', `Found ${keywordMatches.length} transactions containing "${property.transactionKeyword}"`);
+                }
+
+                // Step 5: Analyze payment amounts
+                updateStep(4, 'running');
+                const rentMatches = keywordMatches.filter(transaction => {
+                    const tolerance = property.rentAmount * 0.05; // 5% tolerance
+                    return Math.abs(transaction.amount - property.rentAmount) <= tolerance;
+                });
+
+                let analysisDetails;
+                if (rentMatches.length === 0) {
+                    analysisDetails = keywordMatches.length > 0 ?
+                        `Found ${keywordMatches.length} keyword matches but none match expected rent amount ($${property.rentAmount})` :
+                        'No matching payments found';
+                } else {
+                    const latestMatch = rentMatches.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                    analysisDetails = `Found ${rentMatches.length} matching payment(s). Latest: $${latestMatch.amount} on ${new Date(latestMatch.date).toLocaleDateString()}`;
+                }
+
+                updateStep(4, 'completed', analysisDetails);
+
+                // Step 6: Generate report
+                updateStep(5, 'running');
+                await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause for UX
+                updateStep(5, 'completed', 'Report generated successfully');
+
+                // Finalize the check
+                await finalizeCheck(checkId, 'completed', rentMatches);
+
+            } catch (error) {
+                const check = rentChecks.find(c => c.id === checkId);
+                if (check) {
+                    const currentStep = check.steps.findIndex(step => step.status === 'running');
+                    if (currentStep !== -1) {
+                        updateStep(currentStep, 'failed', `Error: ${error.message}`);
+                    }
+                }
+                await finalizeCheck(checkId, 'failed');
+            }
+        }
+
+        async function finalizeCheck(checkId, status, matchedTransactions = []) {
+            const check = rentChecks.find(c => c.id === checkId);
+            if (!check) return;
+
+            check.status = status;
+            const property = properties.find(p => p.id === check.propertyId);
+
+            if (status === 'completed' && matchedTransactions.length > 0) {
+                const latestTransaction = matchedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                check.result = {
+                    paymentFound: true,
+                    expectedAmount: property?.rentAmount || 0,
+                    actualAmount: latestTransaction.amount,
+                    transactionDate: latestTransaction.date,
+                    transactionDescription: latestTransaction.description,
+                    totalMatches: matchedTransactions.length
+                };
+            } else {
+                check.result = {
+                    paymentFound: false,
+                    expectedAmount: property?.rentAmount || 0,
+                    actualAmount: null,
+                    transactionDate: null,
+                    transactionDescription: null,
+                    totalMatches: 0
+                };
+            }
+
+            localStorage.setItem('rentChecks', JSON.stringify(rentChecks));
+
+            if (document.getElementById('rent-checks-tab').classList.contains('active')) {
+                displayRentChecks();
+                updateRentCheckSummary();
+            }
+        }
+
+        async function simulateStep(checkId, stepIndex) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    const check = rentChecks.find(c => c.id === checkId);
+                    if (!check) return resolve();
+
+                    const step = check.steps[stepIndex];
+                    step.status = 'running';
+                    step.timestamp = new Date().toISOString();
+
+                    localStorage.setItem('rentChecks', JSON.stringify(rentChecks));
+
+                    if (document.getElementById('rent-checks-tab').classList.contains('active')) {
+                        displayRentChecks();
+                    }
+
+                    setTimeout(() => {
+                        const success = Math.random() > 0.1;
+                        step.status = success ? 'completed' : 'failed';
+                        step.details = success ?
+                            getStepSuccessMessage(stepIndex) :
+                            getStepFailureMessage(stepIndex);
+
+                        localStorage.setItem('rentChecks', JSON.stringify(rentChecks));
+
+                        if (document.getElementById('rent-checks-tab').classList.contains('active')) {
+                            displayRentChecks();
+                        }
+
+                        resolve();
+                    }, Math.random() * 2000 + 1000);
+                }, 500);
+            });
+        }
+
+        function getStepSuccessMessage(stepIndex) {
+            const messages = [
+                'Successfully connected to Akahu API',
+                'Retrieved 47 transactions from the last 30 days',
+                'Found 2 matching transactions',
+                'Payment amount matches expected rent',
+                'Report generated successfully'
+            ];
+            return messages[stepIndex] || 'Step completed';
+        }
+
+        function getStepFailureMessage(stepIndex) {
+            const messages = [
+                'API connection failed - check credentials',
+                'Failed to fetch transactions - API rate limit exceeded',
+                'No matching transactions found',
+                'Payment amount mismatch detected',
+                'Report generation failed'
+            ];
+            return messages[stepIndex] || 'Step failed';
+        }
+
+        function displayRentChecks() {
+            const historyElement = document.getElementById('rentCheckHistory');
+
+            if (rentChecks.length === 0) {
+                historyElement.innerHTML = '<p>No rent checks have been run yet.</p>';
+                return;
+            }
+
+            historyElement.innerHTML = rentChecks.map(check => `
+                <div class="rent-check-item">
+                    <div class="rent-check-header" onclick="toggleCheckDetails(${check.id})">
+                        <div>
+                            <strong>${check.propertyAddress}</strong> - ${check.tenantName}<br>
+                            <small>${new Date(check.timestamp).toLocaleString()} ${check.manual ? '(Manual)' : '(Automatic)'}</small>
+                        </div>
+                        <span class="check-status ${check.status}">${check.status}</span>
+                    </div>
+                    <div id="details-${check.id}" class="rent-check-details">
+                        <h4>Check Steps:</h4>
+                        <ul class="step-list">
+                            ${check.steps.map(step => `
+                                <li class="step-item">
+                                    <div class="step-icon ${step.status}">
+                                        ${getStepIcon(step.status)}
+                                    </div>
+                                    <div class="step-content">
+                                        <div class="step-title">${step.title}</div>
+                                        ${step.details ? `<div class="step-details">${step.details}</div>` : ''}
+                                        ${step.timestamp ? `<div class="step-details">Completed: ${new Date(step.timestamp).toLocaleTimeString()}</div>` : ''}
+                                    </div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                        ${check.result ? `
+                            <h4>Result:</h4>
+                            <div class="property-details">
+                                <div><strong>Payment Found:</strong> ${check.result.paymentFound ? 'Yes' : 'No'}</div>
+                                <div><strong>Expected Amount:</strong> $${check.result.expectedAmount}</div>
+                                ${check.result.actualAmount ? `<div><strong>Actual Amount:</strong> $${check.result.actualAmount}</div>` : ''}
+                                ${check.result.transactionDate ? `<div><strong>Transaction Date:</strong> ${new Date(check.result.transactionDate).toLocaleDateString()}</div>` : ''}
+                                ${check.result.transactionDescription ? `<div><strong>Description:</strong> ${check.result.transactionDescription}</div>` : ''}
+                                ${check.result.totalMatches > 1 ? `<div><strong>Total Matches:</strong> ${check.result.totalMatches}</div>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getStepIcon(status) {
+            switch(status) {
+                case 'completed': return '✓';
+                case 'running': return '⟳';
+                case 'failed': return '✗';
+                default: return '●';
+            }
+        }
+
+        function toggleCheckDetails(checkId) {
+            const detailsElement = document.getElementById(`details-${checkId}`);
+            detailsElement.classList.toggle('expanded');
+        }
+
+        function updateRentCheckSummary() {
+            document.getElementById('totalChecks').textContent = rentChecks.length;
+            document.getElementById('successfulChecks').textContent = rentChecks.filter(check => check.status === 'completed').length;
+            document.getElementById('failedChecks').textContent = rentChecks.filter(check => check.status === 'failed').length;
+            updateNextCheckDate();
+        }
+
+        function startAutoCheck() {
+            if (checkInterval) clearInterval(checkInterval);
+
+            checkInterval = setInterval(() => {
+                runRentCheck(false);
+            }, 60000);
+        }
+
+        function loadSavedData() {
+            if (akahuSettings.appToken) {
+                document.getElementById('akahuAppToken').value = akahuSettings.appToken;
+            }
+            if (akahuSettings.userToken) {
+                document.getElementById('akahuUserToken').value = akahuSettings.userToken;
+            }
+            displayProperties();
+            updateRentCheckSummary();
+            startAutoCheck();
+        }
+
+        loadSavedData();
+    </script>
+</body>
+</html>
