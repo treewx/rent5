@@ -78,9 +78,9 @@ app.post('/api/send-email', async (req, res) => {
                     user: smtpConfig.user,
                     pass: smtpConfig.pass
                 },
-                connectionTimeout: 15000, // 15 seconds
-                greetingTimeout: 10000,   // 10 seconds
-                socketTimeout: 15000,     // 15 seconds
+                connectionTimeout: 10000, // 10 seconds - reduced for Railway
+                greetingTimeout: 5000,    // 5 seconds
+                socketTimeout: 10000,     // 10 seconds
                 pool: true,               // Use connection pooling
                 maxConnections: 1,        // Limit connections
                 rateDelta: 20000,         // Limit rate
@@ -251,8 +251,31 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log('Akahu API proxy available at /api/akahu/*');
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log('Server started successfully');
+});
+
+// Graceful shutdown for Railway
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+        process.exit(0);
+    });
 });
