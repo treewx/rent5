@@ -77,7 +77,14 @@ app.post('/api/send-email', async (req, res) => {
                 auth: {
                     user: smtpConfig.user,
                     pass: smtpConfig.pass
-                }
+                },
+                connectionTimeout: 15000, // 15 seconds
+                greetingTimeout: 10000,   // 10 seconds
+                socketTimeout: 15000,     // 15 seconds
+                pool: true,               // Use connection pooling
+                maxConnections: 1,        // Limit connections
+                rateDelta: 20000,         // Limit rate
+                rateLimit: 5              // Max 5 emails per 20s
             });
         } else if (smtpConfig.provider === 'outlook') {
             transporter = nodemailer.createTransport({
@@ -147,17 +154,93 @@ app.post('/api/send-email', async (req, res) => {
         let hint = '';
 
         // Provide specific hints based on common errors
-        if (error.message.includes('Invalid login')) {
+        if (error.message.includes('Invalid login') || error.message.includes('535-5.7.8')) {
             hint = 'Invalid email credentials. For Gmail, use an App Password instead of your regular password.';
-        } else if (error.message.includes('authentication failed')) {
+        } else if (error.message.includes('authentication failed') || error.message.includes('Authentication unsuccessful')) {
             hint = 'Authentication failed. Check your email and password/app password.';
-        } else if (error.message.includes('ENOTFOUND')) {
+        } else if (error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
             hint = 'Cannot connect to email server. Check your internet connection and SMTP settings.';
+        } else if (error.message.includes('ETIMEDOUT') || error.message.includes('Connection timeout')) {
+            hint = 'Connection timed out. This is often caused by: 1) Firewall/antivirus blocking SMTP, 2) Corporate network restrictions, 3) ISP blocking email ports. Try disabling antivirus temporarily or check firewall settings.';
+        } else if (error.message.includes('self signed certificate')) {
+            hint = 'SSL certificate issue. This might be a firewall or antivirus interference.';
+        } else if (error.message.includes('Must issue a STARTTLS')) {
+            hint = 'SMTP security configuration issue. Check port and security settings.';
+        } else if (error.message.includes('ENOTFOUND smtp.gmail.com')) {
+            hint = 'Cannot resolve Gmail SMTP server. Check your DNS settings or internet connection.';
+        } else if (error.message.includes('ECONNREFUSED')) {
+            hint = 'Connection refused by email server. Your ISP might be blocking SMTP ports (25, 587, 465). Contact your ISP or try a VPN.';
         }
 
         res.status(500).json({
             success: false,
             error: errorMessage,
+            hint: hint
+        });
+    }
+});
+
+// Debug endpoint to check email configuration without sending
+app.post('/api/check-email-config', async (req, res) => {
+    try {
+        const { smtpConfig } = req.body;
+
+        if (!smtpConfig) {
+            return res.status(400).json({ success: false, error: 'Missing SMTP configuration' });
+        }
+
+        // Create transporter (same logic as send-email)
+        let transporter;
+
+        if (smtpConfig.provider === 'gmail') {
+            transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: smtpConfig.user,
+                    pass: smtpConfig.pass
+                }
+            });
+        } else if (smtpConfig.provider === 'outlook') {
+            transporter = nodemailer.createTransport({
+                service: 'hotmail',
+                auth: {
+                    user: smtpConfig.user,
+                    pass: smtpConfig.pass
+                }
+            });
+        } else if (smtpConfig.provider === 'smtp') {
+            if (!smtpConfig.host || !smtpConfig.port) {
+                return res.status(400).json({ success: false, error: 'Missing SMTP host or port' });
+            }
+            transporter = nodemailer.createTransport({
+                host: smtpConfig.host,
+                port: parseInt(smtpConfig.port),
+                secure: parseInt(smtpConfig.port) === 465,
+                auth: {
+                    user: smtpConfig.user,
+                    pass: smtpConfig.pass
+                }
+            });
+        } else {
+            return res.status(400).json({ success: false, error: 'Invalid email provider' });
+        }
+
+        // Only verify, don't send
+        await transporter.verify();
+        res.json({ success: true, message: 'Email configuration is valid' });
+
+    } catch (error) {
+        let hint = '';
+        if (error.message.includes('Invalid login') || error.message.includes('535-5.7.8')) {
+            hint = 'Invalid credentials. For Gmail, use App Password instead of regular password.';
+        } else if (error.message.includes('authentication failed') || error.message.includes('Authentication unsuccessful')) {
+            hint = 'Authentication failed. Check your email and password.';
+        }
+
+        res.status(400).json({
+            success: false,
+            error: 'Email configuration invalid',
+            details: error.message,
             hint: hint
         });
     }

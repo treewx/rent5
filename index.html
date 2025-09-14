@@ -376,6 +376,17 @@
 
         <div class="section">
             <h2>Email Notification Settings</h2>
+            <div style="background: #e8f4fd; padding: 15px; margin-bottom: 20px; border-radius: 4px; border-left: 4px solid #007bff;">
+                <h4 style="margin-top: 0; color: #0056b3;">📧 Gmail App Password Setup Guide:</h4>
+                <ol style="margin: 8px 0; padding-left: 20px;">
+                    <li><strong>Enable 2-Factor Authentication</strong> on your Google Account</li>
+                    <li>Go to <strong>Google Account Settings → Security → App Passwords</strong></li>
+                    <li><strong>Generate App Password</strong> for "Mail" application</li>
+                    <li><strong>Use the 16-character App Password</strong> (not your regular Gmail password)</li>
+                    <li><strong>Format:</strong> abcd efgh ijkl mnop (remove spaces when entering)</li>
+                </ol>
+                <p style="margin: 8px 0; color: #d9534f;"><strong>⚠️ Common Issue:</strong> Make sure 2FA is enabled FIRST, then generate App Password</p>
+            </div>
             <form id="emailForm">
                 <div class="form-group">
                     <label for="notificationEmail">Your Email Address:</label>
@@ -432,6 +443,7 @@
                     </label>
                 </div>
                 <button type="submit" class="btn btn-success">Save Email Settings</button>
+                <button type="button" class="btn" onclick="checkEmailConfig()">Check Configuration</button>
                 <button type="button" class="btn" onclick="testEmail()">Send Test Email</button>
             </form>
             <div id="emailStatus" class="status"></div>
@@ -1449,10 +1461,34 @@
         }
 
         async function testEmail() {
+            // Enhanced validation
             if (!emailSettings.notificationEmail || !emailSettings.senderEmail) {
                 showStatus('emailStatus', 'Please configure email settings first', 'error');
                 return;
             }
+
+            if (!emailSettings.emailProvider) {
+                showStatus('emailStatus', 'Please select an email service provider', 'error');
+                return;
+            }
+
+            if (!emailSettings.senderPassword) {
+                showStatus('emailStatus', 'Please enter your email password/app password', 'error');
+                return;
+            }
+
+            if (emailSettings.emailProvider === 'smtp' && (!emailSettings.smtpHost || !emailSettings.smtpPort)) {
+                showStatus('emailStatus', 'Please configure SMTP host and port for custom SMTP', 'error');
+                return;
+            }
+
+            console.log('Testing email with settings:', {
+                to: emailSettings.notificationEmail,
+                from: emailSettings.senderEmail,
+                provider: emailSettings.emailProvider,
+                host: emailSettings.smtpHost,
+                port: emailSettings.smtpPort
+            });
 
             const testEmailTemplate = {
                 subject: 'Test Email - Rent Property Manager',
@@ -1505,12 +1541,77 @@
                 } else {
                     let errorMsg = `Test email failed: ${result.error}`;
                     if (result.hint) {
-                        errorMsg += `\n\nHint: ${result.hint}`;
+                        errorMsg += ` | Hint: ${result.hint}`;
                     }
+                    if (result.details) {
+                        errorMsg += ` | Details: ${result.details}`;
+                    }
+                    console.error('Email test failed:', result);
                     showStatus('emailStatus', errorMsg, 'error');
                 }
             } catch (error) {
                 showStatus('emailStatus', `Test email failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function checkEmailConfig() {
+            // Enhanced validation (same as testEmail)
+            if (!emailSettings.notificationEmail || !emailSettings.senderEmail) {
+                showStatus('emailStatus', 'Please configure email settings first', 'error');
+                return;
+            }
+
+            if (!emailSettings.emailProvider) {
+                showStatus('emailStatus', 'Please select an email service provider', 'error');
+                return;
+            }
+
+            if (!emailSettings.senderPassword) {
+                showStatus('emailStatus', 'Please enter your email password/app password', 'error');
+                return;
+            }
+
+            if (emailSettings.emailProvider === 'smtp' && (!emailSettings.smtpHost || !emailSettings.smtpPort)) {
+                showStatus('emailStatus', 'Please configure SMTP host and port for custom SMTP', 'error');
+                return;
+            }
+
+            showStatus('emailStatus', 'Checking email configuration...', 'success');
+
+            try {
+                const response = await fetch('/api/check-email-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        smtpConfig: {
+                            provider: emailSettings.emailProvider,
+                            host: emailSettings.smtpHost,
+                            port: emailSettings.smtpPort,
+                            user: emailSettings.senderEmail,
+                            pass: emailSettings.senderPassword
+                        }
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus('emailStatus', '✅ Email configuration is valid! You can now send test emails.', 'success');
+                } else {
+                    let errorMsg = `❌ Configuration check failed: ${result.error}`;
+                    if (result.hint) {
+                        errorMsg += ` | Hint: ${result.hint}`;
+                    }
+                    if (result.details) {
+                        errorMsg += ` | Details: ${result.details}`;
+                    }
+                    console.error('Email configuration check failed:', result);
+                    showStatus('emailStatus', errorMsg, 'error');
+                }
+            } catch (error) {
+                showStatus('emailStatus', `Configuration check failed: ${error.message}`, 'error');
             }
         }
 
