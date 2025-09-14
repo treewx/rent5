@@ -375,6 +375,55 @@
         </div>
 
         <div class="section">
+            <h2>Email Notification Settings</h2>
+            <form id="emailForm">
+                <div class="form-group">
+                    <label for="notificationEmail">Your Email Address:</label>
+                    <input type="email" id="notificationEmail" name="notificationEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="emailProvider">Email Service:</label>
+                    <select id="emailProvider" name="emailProvider" required>
+                        <option value="">Select email service</option>
+                        <option value="gmail">Gmail</option>
+                        <option value="outlook">Outlook/Hotmail</option>
+                        <option value="smtp">Custom SMTP</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="senderEmail">Sender Email:</label>
+                    <input type="email" id="senderEmail" name="senderEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="senderPassword">Sender Email Password/App Password:</label>
+                    <input type="password" id="senderPassword" name="senderPassword" required>
+                    <small style="color: #666; font-size: 12px;">For Gmail, use an App Password instead of your regular password</small>
+                </div>
+                <div id="smtpSettings" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="smtpHost">SMTP Host:</label>
+                            <input type="text" id="smtpHost" name="smtpHost">
+                        </div>
+                        <div class="form-group">
+                            <label for="smtpPort">SMTP Port:</label>
+                            <input type="number" id="smtpPort" name="smtpPort">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="enableAutoEmail" name="enableAutoEmail">
+                        Enable automatic email notifications for rent checks
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-success">Save Email Settings</button>
+                <button type="button" class="btn" onclick="testEmail()">Send Test Email</button>
+            </form>
+            <div id="emailStatus" class="status"></div>
+        </div>
+
+        <div class="section">
             <h2>Add Property</h2>
             <form id="propertyForm">
                 <div class="form-group">
@@ -464,6 +513,7 @@
         let properties = JSON.parse(localStorage.getItem('properties') || '[]');
         let akahuSettings = JSON.parse(localStorage.getItem('akahuSettings') || '{}');
         let rentChecks = JSON.parse(localStorage.getItem('rentChecks') || '[]');
+        let emailSettings = JSON.parse(localStorage.getItem('emailSettings') || '{}');
         let checkInterval;
 
         function switchTab(tabName) {
@@ -492,6 +542,51 @@
             akahuSettings = settings;
 
             showStatus('akahuStatus', 'Akahu settings saved successfully!', 'success');
+        });
+
+        document.getElementById('emailForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const settings = {
+                notificationEmail: formData.get('notificationEmail'),
+                emailProvider: formData.get('emailProvider'),
+                senderEmail: formData.get('senderEmail'),
+                senderPassword: formData.get('senderPassword'),
+                smtpHost: formData.get('smtpHost'),
+                smtpPort: formData.get('smtpPort'),
+                enableAutoEmail: formData.get('enableAutoEmail') === 'on'
+            };
+
+            localStorage.setItem('emailSettings', JSON.stringify(settings));
+            emailSettings = settings;
+
+            showStatus('emailStatus', 'Email settings saved successfully!', 'success');
+        });
+
+        document.getElementById('emailProvider').addEventListener('change', function() {
+            const smtpSettings = document.getElementById('smtpSettings');
+            const smtpHost = document.getElementById('smtpHost');
+            const smtpPort = document.getElementById('smtpPort');
+
+            if (this.value === 'smtp') {
+                smtpSettings.style.display = 'block';
+                smtpHost.required = true;
+                smtpPort.required = true;
+            } else {
+                smtpSettings.style.display = 'none';
+                smtpHost.required = false;
+                smtpPort.required = false;
+
+                // Set default SMTP settings
+                if (this.value === 'gmail') {
+                    smtpHost.value = 'smtp.gmail.com';
+                    smtpPort.value = '587';
+                } else if (this.value === 'outlook') {
+                    smtpHost.value = 'smtp-mail.outlook.com';
+                    smtpPort.value = '587';
+                }
+            }
         });
 
         document.getElementById('propertyForm').addEventListener('submit', function(e) {
@@ -812,19 +907,31 @@
 
         function shouldRunRentCheck() {
             const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
             const propertiesNeedingCheck = properties.filter(property => {
-                const dueDate = getNextRentDueDate(property);
-                const checkDate = new Date(dueDate);
-                checkDate.setDate(checkDate.getDate() + 1);
+                const lastDueDate = getLastRentDueDate(property);
+                const dueDateOnly = new Date(lastDueDate.getFullYear(), lastDueDate.getMonth(), lastDueDate.getDate());
+
+                // Check if today is the due date or up to 2 days after due date
+                const daysSinceDue = Math.floor((today - dueDateOnly) / (1000 * 60 * 60 * 24));
+                const shouldCheckToday = daysSinceDue >= 0 && daysSinceDue <= 2;
+
+                if (!shouldCheckToday) return false;
 
                 const lastCheck = rentChecks
                     .filter(check => check.propertyId === property.id)
                     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
 
-                if (!lastCheck) return checkDate <= now;
+                // If no previous check, run it
+                if (!lastCheck) return true;
 
+                // Only run if we haven't checked for this due date yet
                 const lastCheckDate = new Date(lastCheck.timestamp);
-                return checkDate <= now && checkDate > lastCheckDate;
+                const lastCheckDateOnly = new Date(lastCheckDate.getFullYear(), lastCheckDate.getMonth(), lastCheckDate.getDate());
+
+                // Don't run multiple checks on the same day for the same property
+                return lastCheckDateOnly < today;
             });
 
             return propertiesNeedingCheck;
@@ -1054,6 +1161,15 @@
                 displayRentChecks();
                 updateRentCheckSummary();
             }
+
+            // Send email notification if auto-email is enabled
+            if (emailSettings.enableAutoEmail && check.result) {
+                const property = properties.find(p => p.id === check.propertyId);
+                if (property) {
+                    const emailTemplate = generateEmailTemplate(property, check.result);
+                    sendEmail(emailTemplate.subject, emailTemplate.body, check.result);
+                }
+            }
         }
 
         async function simulateStep(checkId, stepIndex) {
@@ -1197,12 +1313,164 @@
             updateNextCheckDate();
         }
 
+        async function sendEmail(subject, body, checkResult = null) {
+            if (!emailSettings.enableAutoEmail || !emailSettings.notificationEmail) {
+                return false;
+            }
+
+            try {
+                const emailData = {
+                    to: emailSettings.notificationEmail,
+                    from: emailSettings.senderEmail,
+                    subject: subject,
+                    html: body,
+                    smtpConfig: {
+                        provider: emailSettings.emailProvider,
+                        host: emailSettings.smtpHost,
+                        port: emailSettings.smtpPort,
+                        user: emailSettings.senderEmail,
+                        pass: emailSettings.senderPassword
+                    }
+                };
+
+                const response = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(emailData)
+                });
+
+                const result = await response.json();
+                return result.success;
+            } catch (error) {
+                console.error('Email sending failed:', error);
+                return false;
+            }
+        }
+
+        function generateEmailTemplate(property, checkResult) {
+            const dueDate = new Date(checkResult.rentDueDate).toLocaleDateString();
+            const isPaymentFound = checkResult.paymentFound;
+
+            let subject, body;
+
+            if (isPaymentFound) {
+                const paymentDate = new Date(checkResult.transactionDate).toLocaleDateString();
+                const timingColor = checkResult.paymentTiming.status === 'on-time' ? '#28a745' :
+                                   checkResult.paymentTiming.status === 'early' ? '#007bff' : '#ffc107';
+
+                subject = `✅ Rent Payment Received - ${property.address}`;
+                body = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: #28a745; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0;">✅ Rent Payment Received</h1>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; border-radius: 0 0 8px 8px;">
+                        <h2 style="color: #2c3e50; margin-top: 0;">${property.address}</h2>
+                        <p><strong>Tenant:</strong> ${property.tenantName}</p>
+
+                        <div style="background: white; padding: 15px; border-radius: 4px; margin: 15px 0;">
+                            <h3 style="color: #2c3e50; margin-top: 0;">Payment Details</h3>
+                            <p><strong>Due Date:</strong> ${dueDate}</p>
+                            <p><strong>Payment Date:</strong> ${paymentDate}</p>
+                            <p><strong>Expected Amount:</strong> $${checkResult.expectedAmount}</p>
+                            <p><strong>Amount Received:</strong> $${checkResult.actualAmount}</p>
+                            <p><strong>Status:</strong> <span style="color: ${timingColor}; font-weight: bold;">${checkResult.paymentTiming.description}</span></p>
+                            <p><strong>Description:</strong> ${checkResult.transactionDescription}</p>
+                        </div>
+
+                        <div style="background: #e8f5e8; padding: 10px; border-left: 4px solid #28a745; margin-top: 15px;">
+                            <p style="margin: 0;"><strong>✅ Rent payment confirmed for ${dueDate}</strong></p>
+                        </div>
+
+                        <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                            This is an automated notification from your Rent Property Manager.
+                        </p>
+                    </div>
+                </div>`;
+            } else {
+                subject = `⚠️ Rent Payment Missing - ${property.address}`;
+                body = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: #dc3545; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0;">⚠️ Rent Payment Missing</h1>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; border-radius: 0 0 8px 8px;">
+                        <h2 style="color: #2c3e50; margin-top: 0;">${property.address}</h2>
+                        <p><strong>Tenant:</strong> ${property.tenantName}</p>
+
+                        <div style="background: white; padding: 15px; border-radius: 4px; margin: 15px 0;">
+                            <h3 style="color: #2c3e50; margin-top: 0;">Payment Details</h3>
+                            <p><strong>Due Date:</strong> ${dueDate}</p>
+                            <p><strong>Expected Amount:</strong> $${checkResult.expectedAmount} (${checkResult.rentFrequency})</p>
+                            <p><strong>Search Keyword:</strong> "${property.transactionKeyword}"</p>
+                        </div>
+
+                        <div style="background: #f8d7da; padding: 10px; border-left: 4px solid #dc3545; margin-top: 15px;">
+                            <p style="margin: 0;"><strong>❌ No payment found for rent due on ${dueDate}</strong></p>
+                        </div>
+
+                        <p style="margin-top: 15px;">
+                            <strong>Next Due Date:</strong> ${new Date(checkResult.nextDueDate).toLocaleDateString()}
+                        </p>
+
+                        <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                            This is an automated notification from your Rent Property Manager.
+                            Please check your bank account or contact your tenant.
+                        </p>
+                    </div>
+                </div>`;
+            }
+
+            return { subject, body };
+        }
+
+        async function testEmail() {
+            if (!emailSettings.notificationEmail || !emailSettings.senderEmail) {
+                showStatus('emailStatus', 'Please configure email settings first', 'error');
+                return;
+            }
+
+            const testEmailTemplate = {
+                subject: 'Test Email - Rent Property Manager',
+                body: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: #3498db; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0;">📧 Test Email</h1>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 20px; border: 1px solid #dee2e6; border-radius: 0 0 8px 8px;">
+                        <h2 style="color: #2c3e50; margin-top: 0;">Email Configuration Test</h2>
+                        <p>This is a test email from your Rent Property Manager system.</p>
+                        <p>If you receive this email, your email configuration is working correctly!</p>
+                        <div style="background: #d4edda; padding: 10px; border-left: 4px solid #28a745; margin-top: 15px;">
+                            <p style="margin: 0;"><strong>✅ Email system is functioning properly</strong></p>
+                        </div>
+                        <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                            Test sent at: ${new Date().toLocaleString()}
+                        </p>
+                    </div>
+                </div>`
+            };
+
+            showStatus('emailStatus', 'Sending test email...', 'success');
+
+            const success = await sendEmail(testEmailTemplate.subject, testEmailTemplate.body);
+
+            if (success) {
+                showStatus('emailStatus', 'Test email sent successfully!', 'success');
+            } else {
+                showStatus('emailStatus', 'Test email failed to send. Please check your settings.', 'error');
+            }
+        }
+
         function startAutoCheck() {
             if (checkInterval) clearInterval(checkInterval);
 
+            // Check every 10 minutes (600,000 ms) instead of every minute for better performance
             checkInterval = setInterval(() => {
                 runRentCheck(false);
-            }, 60000);
+            }, 600000);
         }
 
         function loadSavedData() {
@@ -1212,6 +1480,32 @@
             if (akahuSettings.userToken) {
                 document.getElementById('akahuUserToken').value = akahuSettings.userToken;
             }
+
+            // Load email settings
+            if (emailSettings.notificationEmail) {
+                document.getElementById('notificationEmail').value = emailSettings.notificationEmail;
+            }
+            if (emailSettings.emailProvider) {
+                document.getElementById('emailProvider').value = emailSettings.emailProvider;
+                // Trigger change event to set SMTP settings
+                document.getElementById('emailProvider').dispatchEvent(new Event('change'));
+            }
+            if (emailSettings.senderEmail) {
+                document.getElementById('senderEmail').value = emailSettings.senderEmail;
+            }
+            if (emailSettings.senderPassword) {
+                document.getElementById('senderPassword').value = emailSettings.senderPassword;
+            }
+            if (emailSettings.smtpHost) {
+                document.getElementById('smtpHost').value = emailSettings.smtpHost;
+            }
+            if (emailSettings.smtpPort) {
+                document.getElementById('smtpPort').value = emailSettings.smtpPort;
+            }
+            if (emailSettings.enableAutoEmail) {
+                document.getElementById('enableAutoEmail').checked = emailSettings.enableAutoEmail;
+            }
+
             displayProperties();
             updateRentCheckSummary();
             startAutoCheck();

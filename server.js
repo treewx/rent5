@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 const path = require('path');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,6 +48,62 @@ app.all('/api/akahu/*', async (req, res) => {
     } catch (error) {
         console.error('Proxy error:', error);
         res.status(500).json({ error: 'Proxy request failed', message: error.message });
+    }
+});
+
+// Email sending endpoint
+app.post('/api/send-email', async (req, res) => {
+    try {
+        const { to, from, subject, html, smtpConfig } = req.body;
+
+        // Create transporter based on provider
+        let transporter;
+
+        if (smtpConfig.provider === 'gmail') {
+            transporter = nodemailer.createTransporter({
+                service: 'gmail',
+                auth: {
+                    user: smtpConfig.user,
+                    pass: smtpConfig.pass
+                }
+            });
+        } else if (smtpConfig.provider === 'outlook') {
+            transporter = nodemailer.createTransporter({
+                service: 'hotmail',
+                auth: {
+                    user: smtpConfig.user,
+                    pass: smtpConfig.pass
+                }
+            });
+        } else {
+            // Custom SMTP
+            transporter = nodemailer.createTransporter({
+                host: smtpConfig.host,
+                port: smtpConfig.port,
+                secure: smtpConfig.port === 465, // true for 465, false for other ports
+                auth: {
+                    user: smtpConfig.user,
+                    pass: smtpConfig.pass
+                }
+            });
+        }
+
+        const mailOptions = {
+            from: from,
+            to: to,
+            subject: subject,
+            html: html
+        };
+
+        console.log(`Sending email from ${from} to ${to}: ${subject}`);
+
+        const result = await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully:', result.messageId);
+
+        res.json({ success: true, messageId: result.messageId });
+    } catch (error) {
+        console.error('Email sending error:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
