@@ -397,7 +397,20 @@
                 <div class="form-group">
                     <label for="senderPassword">Sender Email Password/App Password:</label>
                     <input type="password" id="senderPassword" name="senderPassword" required>
-                    <small style="color: #666; font-size: 12px;">For Gmail, use an App Password instead of your regular password</small>
+                    <div id="passwordInstructions" style="margin-top: 8px; padding: 10px; background: #f0f8ff; border-left: 3px solid #007bff; border-radius: 4px; display: none;">
+                        <strong>📧 Gmail Setup Instructions:</strong><br>
+                        1. Enable 2-Factor Authentication on your Google account<br>
+                        2. Go to Google Account Settings → Security → App Passwords<br>
+                        3. Generate a new App Password for "Mail"<br>
+                        4. Use the 16-character App Password here (not your regular password)<br>
+                        5. Example: abcd efgh ijkl mnop
+                    </div>
+                    <div id="outlookInstructions" style="margin-top: 8px; padding: 10px; background: #f0f8ff; border-left: 3px solid #007bff; border-radius: 4px; display: none;">
+                        <strong>📧 Outlook Setup Instructions:</strong><br>
+                        1. Use your full Outlook/Hotmail email address<br>
+                        2. Use your regular Microsoft account password<br>
+                        3. If you have 2FA enabled, use an App Password instead
+                    </div>
                 </div>
                 <div id="smtpSettings" style="display: none;">
                     <div class="form-row">
@@ -568,6 +581,12 @@
             const smtpSettings = document.getElementById('smtpSettings');
             const smtpHost = document.getElementById('smtpHost');
             const smtpPort = document.getElementById('smtpPort');
+            const passwordInstructions = document.getElementById('passwordInstructions');
+            const outlookInstructions = document.getElementById('outlookInstructions');
+
+            // Hide all instructions first
+            passwordInstructions.style.display = 'none';
+            outlookInstructions.style.display = 'none';
 
             if (this.value === 'smtp') {
                 smtpSettings.style.display = 'block';
@@ -578,13 +597,15 @@
                 smtpHost.required = false;
                 smtpPort.required = false;
 
-                // Set default SMTP settings
+                // Set default SMTP settings and show instructions
                 if (this.value === 'gmail') {
                     smtpHost.value = 'smtp.gmail.com';
                     smtpPort.value = '587';
+                    passwordInstructions.style.display = 'block';
                 } else if (this.value === 'outlook') {
                     smtpHost.value = 'smtp-mail.outlook.com';
                     smtpPort.value = '587';
+                    outlookInstructions.style.display = 'block';
                 }
             }
         });
@@ -1455,12 +1476,40 @@
 
             showStatus('emailStatus', 'Sending test email...', 'success');
 
-            const success = await sendEmail(testEmailTemplate.subject, testEmailTemplate.body);
+            try {
+                const response = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        to: emailSettings.notificationEmail,
+                        from: emailSettings.senderEmail,
+                        subject: testEmailTemplate.subject,
+                        html: testEmailTemplate.body,
+                        smtpConfig: {
+                            provider: emailSettings.emailProvider,
+                            host: emailSettings.smtpHost,
+                            port: emailSettings.smtpPort,
+                            user: emailSettings.senderEmail,
+                            pass: emailSettings.senderPassword
+                        }
+                    })
+                });
 
-            if (success) {
-                showStatus('emailStatus', 'Test email sent successfully!', 'success');
-            } else {
-                showStatus('emailStatus', 'Test email failed to send. Please check your settings.', 'error');
+                const result = await response.json();
+
+                if (result.success) {
+                    showStatus('emailStatus', 'Test email sent successfully! Check your inbox.', 'success');
+                } else {
+                    let errorMsg = `Test email failed: ${result.error}`;
+                    if (result.hint) {
+                        errorMsg += `\n\nHint: ${result.hint}`;
+                    }
+                    showStatus('emailStatus', errorMsg, 'error');
+                }
+            } catch (error) {
+                showStatus('emailStatus', `Test email failed: ${error.message}`, 'error');
             }
         }
 

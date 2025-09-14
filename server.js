@@ -56,11 +56,23 @@ app.post('/api/send-email', async (req, res) => {
     try {
         const { to, from, subject, html, smtpConfig } = req.body;
 
+        // Validate required fields
+        if (!to || !from || !subject || !html || !smtpConfig) {
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        }
+
+        if (!smtpConfig.user || !smtpConfig.pass) {
+            return res.status(400).json({ success: false, error: 'Missing email credentials' });
+        }
+
+        console.log(`Configuring email transport for provider: ${smtpConfig.provider}`);
+        console.log(`Email from: ${smtpConfig.user} to: ${to}`);
+
         // Create transporter based on provider
         let transporter;
 
         if (smtpConfig.provider === 'gmail') {
-            transporter = nodemailer.createTransporter({
+            transporter = nodemailer.createTransport({
                 service: 'gmail',
                 auth: {
                     user: smtpConfig.user,
@@ -68,23 +80,43 @@ app.post('/api/send-email', async (req, res) => {
                 }
             });
         } else if (smtpConfig.provider === 'outlook') {
-            transporter = nodemailer.createTransporter({
+            transporter = nodemailer.createTransport({
                 service: 'hotmail',
                 auth: {
                     user: smtpConfig.user,
                     pass: smtpConfig.pass
                 }
             });
-        } else {
-            // Custom SMTP
-            transporter = nodemailer.createTransporter({
+        } else if (smtpConfig.provider === 'smtp') {
+            if (!smtpConfig.host || !smtpConfig.port) {
+                return res.status(400).json({ success: false, error: 'Missing SMTP host or port' });
+            }
+            transporter = nodemailer.createTransport({
                 host: smtpConfig.host,
-                port: smtpConfig.port,
-                secure: smtpConfig.port === 465, // true for 465, false for other ports
+                port: parseInt(smtpConfig.port),
+                secure: parseInt(smtpConfig.port) === 465,
                 auth: {
                     user: smtpConfig.user,
                     pass: smtpConfig.pass
                 }
+            });
+        } else {
+            return res.status(400).json({ success: false, error: 'Invalid email provider' });
+        }
+
+        // Verify transporter configuration
+        try {
+            await transporter.verify();
+            console.log('Email transporter verified successfully');
+        } catch (verifyError) {
+            console.error('Email transporter verification failed:', verifyError.message);
+            return res.status(400).json({
+                success: false,
+                error: 'Email configuration verification failed',
+                details: verifyError.message,
+                hint: smtpConfig.provider === 'gmail' ?
+                    'For Gmail, use an App Password instead of your regular password. Enable 2FA first, then generate an App Password in Google Account settings.' :
+                    'Check your email credentials and server settings.'
             });
         }
 
@@ -95,7 +127,7 @@ app.post('/api/send-email', async (req, res) => {
             html: html
         };
 
-        console.log(`Sending email from ${from} to ${to}: ${subject}`);
+        console.log(`Attempting to send email: ${subject}`);
 
         const result = await transporter.sendMail(mailOptions);
         console.log('Email sent successfully:', result.messageId);
@@ -103,7 +135,24 @@ app.post('/api/send-email', async (req, res) => {
         res.json({ success: true, messageId: result.messageId });
     } catch (error) {
         console.error('Email sending error:', error);
-        res.status(500).json({ success: false, error: error.message });
+
+        let errorMessage = error.message;
+        let hint = '';
+
+        // Provide specific hints based on common errors
+        if (error.message.includes('Invalid login')) {
+            hint = 'Invalid email credentials. For Gmail, use an App Password instead of your regular password.';
+        } else if (error.message.includes('authentication failed')) {
+            hint = 'Authentication failed. Check your email and password/app password.';
+        } else if (error.message.includes('ENOTFOUND')) {
+            hint = 'Cannot connect to email server. Check your internet connection and SMTP settings.';
+        }
+
+        res.status(500).json({
+            success: false,
+            error: errorMessage,
+            hint: hint
+        });
     }
 });
 
