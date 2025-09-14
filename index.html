@@ -426,7 +426,7 @@
                 <p>No properties added yet.</p>
             </div>
             <button type="button" class="btn" onclick="fetchBankTransactions()">Fetch Bank Transactions</button>
-            <button type="button" class="btn btn-warning" onclick="runRentCheck()">Run Rent Check Now</button>
+            <button type="button" class="btn btn-warning" onclick="runRentCheck(true)">Run Rent Check Now</button>
             </div>
         </div>
 
@@ -790,13 +790,26 @@
                 return;
             }
 
+            if (properties.length === 0) {
+                alert('Please add at least one property before running rent checks');
+                return;
+            }
+
             const propertiesToCheck = manual ? properties : shouldRunRentCheck();
 
             if (propertiesToCheck.length === 0) {
                 if (manual) {
-                    alert('No properties need checking at this time.');
+                    alert('No properties available for checking.');
+                } else {
+                    console.log('No properties need automatic checking at this time.');
                 }
                 return;
+            }
+
+            if (manual) {
+                alert(`Starting manual rent check for ${propertiesToCheck.length} property(ies). Switch to the Rent Checks tab to watch the progress.`);
+                // Switch to rent checks tab automatically
+                switchTab('rent-checks');
             }
 
             propertiesToCheck.forEach(property => {
