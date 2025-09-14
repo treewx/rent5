@@ -121,10 +121,17 @@ app.post('/api/send-email', async (req, res) => {
         }
 
         const mailOptions = {
-            from: from,
+            from: `"Rent Property Manager" <${from}>`,
             to: to,
             subject: subject,
-            html: html
+            html: html,
+            headers: {
+                'X-Mailer': 'Rent Property Manager',
+                'X-Priority': '3',
+                'X-MSMail-Priority': 'Normal',
+                'Importance': 'Normal'
+            },
+            text: `This is an email from your Rent Property Manager system. Please enable HTML view to see the formatted content.`
         };
 
         console.log(`Attempting to send email: ${subject}`);
